@@ -12,6 +12,7 @@ public class OthelloStone implements Serializable {
     /** 色 */
     private String color;
 
+    // getter
     public OthelloStone (String number, String color) {
         this.setNumber(number);
         this.setColor(color);
