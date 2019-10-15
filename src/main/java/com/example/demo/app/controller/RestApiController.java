@@ -1,5 +1,7 @@
 package com.example.demo.app.controller;
 
+import java.util.ArrayList;
+
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -13,40 +15,157 @@ import com.example.demo.app.resource.OthelloStone;
 @RestController
 @RequestMapping("api/sample")
 public class RestApiController {
-	
+
+	// オセロの配列
 	public int [][] OthelloStone = {
-	    	{0, 0, 0, 0, 0, 0, 0, 0},
-	        {0, 0, 0, 0, 0, 0, 0, 0},
-	        {0, 0, 0, 0, 0, 0, 0, 0},
-	        {0, 0, 0, 1, -1, 0, 0, 0},
-	        {0, 0, 0, -1, 1, 0, 0, 0},
-	        {0, 0, 0, 0, 0, 0, 0, 0},
-	        {0, 0, 0, 0, 0, 0, 0, 0},
-	        {0, 0, 0, 0, 0, 0, 0, 0}
-    	};
+			{0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, -1, 0, 0, 0, 0},
+			{0, 0, 0, 1, -1, 0, 0, 0},
+			{0, 0, 0, -1, 1, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0}
+	};
+	// ターン
+	public int turn = -1;
+	
+	// 取れる可能性のある石の配列
+	public ArrayList<ArrayList<Integer>> PossibilityStone = new ArrayList<ArrayList<Integer>>();
+	// 取れる石の配列
+	public ArrayList<ArrayList<Integer>> ConfirmStone = new ArrayList<ArrayList<Integer>>();
+	
 
 	@RequestMapping(value = "/getMessage", method = RequestMethod.GET)
-    @ResponseBody
-    @CrossOrigin
-    public OthelloStone getMessage() {
-    	OthelloStone othelloStone = new OthelloStone("1", "黒");
-        return othelloStone;
-    }
+	@ResponseBody
+	@CrossOrigin
+	public OthelloStone getMessage() {
+		OthelloStone othelloStone = new OthelloStone("1", "黒");
+		return othelloStone;
+	}
+
+	@RequestMapping(value = "/getOthelloStone", method = RequestMethod.GET)
+	@ResponseBody
+	@CrossOrigin
+	public int[][] getOthelloStone() {
+		return OthelloStone;
+	}
+
+	@RequestMapping(value = "/hitOthelloStone", method = RequestMethod.GET)
+	@ResponseBody
+	@CrossOrigin
+	public String hitOthelloStone(
+			@RequestParam("hitY") int hitY,
+			@RequestParam("hitX") int hitX) {
+		
+		// Resultメッセージ
+		String resultMessage = "";
+		// 更新を実施するか判定する変数
+		boolean result = false;
+		// すでに石が置かれているかチェックする
+		if (OthelloStone[hitY][hitX] != 0) {
+			resultMessage = "その場所には置けません";
+			return resultMessage;
+		}
+		// 周りのマスに石が1つでもあるかチェックする
+		for (int i = hitY - 1; i < hitY + 2; i++) {
+			for (int k = hitX - 1; k < hitX + 2; k++) {
+				if ((i >= 0 && i < 8)
+						&&(k >= 0 && k < 8 )
+						&&OthelloStone[i][k] != 0) {
+					result = true;
+					break;
+				}
+			}
+		}
+		
+		// 取れる石があるかチェックする
+		for (int i = hitY - 1; i < hitY + 2; i++) {
+			for (int k = hitX - 1; k < hitX + 2; k++) {
+				// 敵のマスだった場合、チェック関数を呼び出す
+				if ((i >= 0 && i < 8)
+						&&(k >= 0 && k < 8 )
+					&& OthelloStone[i][k] == (turn * -1)) {
+					// 方向を算出する（対象ー置こうとした場所）
+					int directionY = i - hitY;
+					int directionX = k - hitX;
+					// 方向の先にある石が何色かチェックする関数
+					// 自分と同じ色がある場合、possiblestoneをgetstoneにリスト追加
+					// 石が何も置かれていない場合、その方向のチェックは処理終了
+					// 敵の色がある→候補リストpossiblestoneにリスト追加し、再帰関数を呼び続ける
+					checkCell(i, k, directionY, directionX);
+				}
+			}
+		}
+		// 取ってきたリストが０件の場合更新しない
+		if (ConfirmStone.size() == 0) {
+			result = false;
+		}
+
+		// 石の更新処理
+		if (result) {
+			// クリックした場所を更新する
+			OthelloStone[hitY][hitX] = turn;
+			// 取れた範囲を更新する
+			for (int k = 0 ; k < ConfirmStone.size(); k++) {
+				int updateY = ConfirmStone.get(k).get(0);
+				int updateX = ConfirmStone.get(k).get(1);
+				OthelloStone[updateY][updateX] = turn;
+			}
+			// 確定石リストの初期化
+			ConfirmStone = new ArrayList<ArrayList<Integer>>();
+			
+			// turnを判定させる
+			turn *= -1;
+			// 更新成功メッセージ
+			resultMessage = "あなたの番です";
+		}
+		return resultMessage;
+	}
 	
-    @RequestMapping(value = "/getOthelloStone", method = RequestMethod.GET)
-    @ResponseBody
-    @CrossOrigin
-    public int[][] getOthelloStone() {
-        return OthelloStone;
-    }
-    
-    @RequestMapping(value = "/hitOthelloStone", method = RequestMethod.GET)
-    @ResponseBody
-    @CrossOrigin
-    public String hitOthelloStone(
-    		@RequestParam("hitX") int hitX,
-    		@RequestParam("hitY") int hitY) {
-    	OthelloStone[hitY][hitX] = -1;
-        return "あなたの番です";
-    }
+	public void checkCell (int centerI, int centerK, int directionY, int directionX) {
+		// 対象の石座標に方向の座標を足しこんでチェック対象を取得する
+		int targetY = centerI + directionY;
+		int targetX = centerK + directionX;
+		int target = OthelloStone[targetY][targetX];
+		
+		// 終了になる条件：自分と同じ色（リスト追加）
+		if (target == turn) {
+			// 確定石リストに追加する
+			ArrayList<Integer> intList = new ArrayList<Integer>();
+			intList.add(centerI);
+			intList.add(centerK);
+			ConfirmStone.add(intList);
+			// 今までの候補リストを追加する
+			if (PossibilityStone.size() != 0) {
+				for (int m = 0; m < PossibilityStone.size(); m++) {
+					// 確定石リストに追加する
+					ConfirmStone.add(PossibilityStone.get(m));
+				}
+			}
+			// 候補石リストの初期化
+			PossibilityStone = new ArrayList<ArrayList<Integer>>();
+			
+		// 再帰になる条件：ライバルと同じ色
+		} else if (target == (turn * -1)) {
+			// 方向の算出
+			int paramDirectionY = targetY - centerI;
+			int paramDirectionX = targetX - centerK;
+			// 候補石リストに追加する
+			ArrayList<Integer> intList = new ArrayList<Integer>();
+			intList.add(paramDirectionY);
+			intList.add(paramDirectionX);
+			PossibilityStone.add(intList);
+			
+			// 再帰関数を呼ぶ
+			if ((paramDirectionY >= 0 && paramDirectionY < 8)
+					&&(paramDirectionX >= 0 && paramDirectionX < 8 )) {
+				checkCell(targetY, targetX, paramDirectionY, paramDirectionX);
+			}
+		// 処理を終了させる条件：先に何もない
+		} else if (target == 0) {
+			// 候補石リストの初期化
+			PossibilityStone = new ArrayList<ArrayList<Integer>>();
+		}
+	}
 }
