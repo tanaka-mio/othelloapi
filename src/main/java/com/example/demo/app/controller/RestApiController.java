@@ -1,6 +1,17 @@
 package com.example.demo.app.controller;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.xml.bind.DatatypeConverter;
 
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,6 +61,36 @@ public class RestApiController {
 	public int[][] getOthelloStone() {
 		return OthelloStone;
 	}
+	
+	@RequestMapping(value = "/getGameStartCode", method = RequestMethod.GET)
+	@ResponseBody
+	@CrossOrigin
+	public Map<String, String> getGameStartCode() {
+        byte[] bytes;
+        String resultCode = "";
+        Map<String,String> resultmap = new HashMap<>();
+		try {
+	        //現在日時を取得する
+	        Calendar c = Calendar.getInstance();
+	        //フォーマットパターンを指定して表示する
+	        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+	        //ハッシュを生成したい元の文字列
+	        String source = sdf.format(c.getTime());
+	        //ハッシュ生成前にバイト配列に置き換える
+	        Charset charset = StandardCharsets.UTF_8;
+	        //ハッシュアルゴリズム
+	        String algorithm = "SHA-512";
+	        //ハッシュ生成処理
+			bytes = MessageDigest.getInstance(algorithm).digest(source.getBytes(charset));
+	        resultCode = DatatypeConverter.printHexBinary(bytes);
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+		resultmap.put("hashCode", resultCode);
+		resultmap.put("turn", (turn == -1)? "-1" : "1" );
+		
+		return resultmap;
+	}
 
 	@RequestMapping(value = "/hitOthelloStone", method = RequestMethod.GET)
 	@ResponseBody
@@ -57,7 +98,7 @@ public class RestApiController {
 	public String hitOthelloStone(
 			@RequestParam("hitY") int hitY,
 			@RequestParam("hitX") int hitX) {
-		
+        
 		// Resultメッセージ
 		String resultMessage = "";
 		// 更新を実施するか判定する変数
@@ -70,9 +111,7 @@ public class RestApiController {
 		// 周りのマスに石が1つでもあるかチェックする
 		for (int i = hitY - 1; i < hitY + 2; i++) {
 			for (int k = hitX - 1; k < hitX + 2; k++) {
-				if ((i >= 0 && i < 8)
-						&&(k >= 0 && k < 8 )
-						&&OthelloStone[i][k] != 0) {
+				if ((i >= 0 && i < 8) && (k >= 0 && k < 8 ) && OthelloStone[i][k] != 0) {
 					result = true;
 					break;
 				}
@@ -83,16 +122,14 @@ public class RestApiController {
 		for (int i = hitY - 1; i < hitY + 2; i++) {
 			for (int k = hitX - 1; k < hitX + 2; k++) {
 				// 敵のマスだった場合、チェック関数を呼び出す
-				if ((i >= 0 && i < 8)
-						&&(k >= 0 && k < 8 )
-					&& OthelloStone[i][k] == (turn * -1)) {
+				if ((i >= 0 && i < 8) && (k >= 0 && k < 8 ) && OthelloStone[i][k] == (turn * -1)) {
 					// 方向を算出する（対象ー置こうとした場所）
 					int directionY = i - hitY;
 					int directionX = k - hitX;
 					// 方向の先にある石が何色かチェックする関数
-					// 自分と同じ色がある場合、possiblestoneをgetstoneにリスト追加
+					// 自分と同じ色がある場合、確定石リストにリスト追加
 					// 石が何も置かれていない場合、その方向のチェックは処理終了
-					// 敵の色がある→候補リストpossiblestoneにリスト追加し、再帰関数を呼び続ける
+					// 敵の色がある→候補石リストに追加し、再帰関数を呼び続ける
 					checkCell(i, k, directionY, directionX);
 				}
 			}
@@ -114,7 +151,6 @@ public class RestApiController {
 			}
 			// 確定石リストの初期化
 			ConfirmStone = new ArrayList<ArrayList<Integer>>();
-			
 			// turnを判定させる
 			turn *= -1;
 			// 更新成功メッセージ
@@ -127,6 +163,13 @@ public class RestApiController {
 		// 対象の石座標に方向の座標を足しこんでチェック対象を取得する
 		int targetY = centerI + directionY;
 		int targetX = centerK + directionX;
+		
+		// ここで、配列要素外にアクセスしようとしていたら処理終了する
+		if (!(targetY >= 0 && targetY < 8) && !(targetX >= 0 && targetX < 8 )){
+			// 候補石リストの初期化
+			PossibilityStone = new ArrayList<ArrayList<Integer>>();
+			return;
+		}
 		int target = OthelloStone[targetY][targetX];
 		
 		// 終了になる条件：自分と同じ色（リスト追加）
@@ -158,10 +201,7 @@ public class RestApiController {
 			PossibilityStone.add(intList);
 			
 			// 再帰関数を呼ぶ
-			if ((paramDirectionY >= 0 && paramDirectionY < 8)
-					&&(paramDirectionX >= 0 && paramDirectionX < 8 )) {
-				checkCell(targetY, targetX, paramDirectionY, paramDirectionX);
-			}
+			checkCell(targetY, targetX, paramDirectionY, paramDirectionX);
 		// 処理を終了させる条件：先に何もない
 		} else if (target == 0) {
 			// 候補石リストの初期化
