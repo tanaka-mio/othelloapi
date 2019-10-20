@@ -39,8 +39,10 @@ public class RestApiController {
 			{0, 0, 0, 0, 0, 0, 0, 0},
 			{0, 0, 0, 0, 0, 0, 0, 0}
 	};
-	// ターン
-	public int turn = -1;
+	// 登録時に使用するターン
+	public int registTurn = -1;
+	// ゲームの判定を決めるTurn
+	public int turn = 0;
 	// ゲームコード
 	public int gameCode = 0;
 	
@@ -60,30 +62,58 @@ public class RestApiController {
 	@RequestMapping(value = "/getBoardStatus", method = RequestMethod.GET)
 	@ResponseBody
 	@CrossOrigin
-	public Map<Object, Object> getBoardStatus() {
+	public Map<Object, Object> getBoardStatus(@RequestParam("hashCode") String hashCode) {
 		// 結果マップ
 		Map<Object, Object> resultMap = new HashMap<>();
-		/*
 		// ユーザー情報
 		GameUser myGameUser = new GameUser();
 		// ゲーム情報
 		GameBoard myGameBoard = new GameBoard();
 		
 		// (1) ハッシュコードのチェック ======================
+		if (hashCode.equals("null")) {
+    		resultMap.put("OthelloStone", OthelloStone);
+    		resultMap.put("status", "001");
+    		return resultMap;
+		}
+		// ユーザーリストにいるかチェック
         for (GameUser tempuser : gameUserList) {
         	if (tempuser.getUser().equals(hashCode)) {
         		myGameUser = tempuser;
         		break;
         	}
         }
-        // ない場合、初期表示のやつを返そう
+        // ゲームに参加していない場合
         if (null == myGameUser.getUser()) {
     		resultMap.put("OthelloStone", OthelloStone);
-    		resultMap.put("status", "ready");
+    		resultMap.put("status", "002");
+    		resultMap.put("message", "まだゲームに参加していません。");
+    		return resultMap;
+        }
+        // 相手がいない場合
+        if (turn == 0) {
+    		resultMap.put("OthelloStone", OthelloStone);
+    		resultMap.put("status", "003");
+    		resultMap.put("message", "まだ対戦相手が現れていません");
+    		return resultMap;
+        }
+        // 相手のターンの場合
+        if (turn != myGameUser.getUserTurn()) {
+        	resultMap.put("OthelloStone", OthelloStone);
+    		resultMap.put("status", "004");
+    		resultMap.put("message", "あなたのターンではありません");
+    		return resultMap;
+        }
+        // 自分のターンの場合
+        if (turn == myGameUser.getUserTurn()) {
+        	resultMap.put("OthelloStone", OthelloStone);
+    		resultMap.put("status", "004");
+    		resultMap.put("message", "あなたのターンです");
     		return resultMap;
         }
         
         // (2) ゲームボードの取得 ======================
+        /*
         for (GameBoard tempBoard : gameBoardList) {
         	if (tempBoard.getGameCode() == myGameUser.getGameCode()) {
         		myGameBoard = tempBoard;
@@ -92,7 +122,7 @@ public class RestApiController {
         }
         */
 		resultMap.put("OthelloStone", OthelloStone);
-		resultMap.put("status", "ready");
+		resultMap.put("status", "005");
 		return resultMap;
 	}
 	
@@ -127,7 +157,7 @@ public class RestApiController {
 	        // (2) ユーザー情報、ゲーム情報の登録 ===================================
 	        // 自分が白の場合、ルームコードを取得してINSERT
 	        // 自分が黒の場合、ルームコード・ゲームコードを＋１してINSERT
-	        if (turn == -1) {
+	        if (registTurn == -1) {
 	        	gameCode = gameCode + 1;
 	        	
 	        	// 黒の時だけゲームボード作成する（初回なので）
@@ -136,22 +166,25 @@ public class RestApiController {
 	        	registBoard.setConfirmStone(new ArrayList<ArrayList<Integer>>());
 	        	registBoard.setPossibilityStone(new ArrayList<ArrayList<Integer>>());
 	        	gameBoardList.add(registBoard);
+	        } else {
+	        	// 白の場合
+	        	turn = -1;
 	        }
 	        // ユーザー情報の作成
         	registUser.setUser(resultCode);
-        	registUser.setUserTurn(turn);
+        	registUser.setUserTurn(registTurn);
         	registUser.setGameCode(gameCode);	
         	gameUserList.add(registUser);
         	
     		// 結果の詰め込み
     		resultmap.put("hashCode", resultCode);
-    		resultmap.put("turn", (turn == -1)? "-1" : "1" );
+    		resultmap.put("turn", (registTurn == -1)? "-1" : "1" );
 	        
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		}		
 		// (3) Turnを反転させる ===================================
-        turn *= -1;
+		registTurn *= -1;
 		
 		return resultmap;
 	}
@@ -191,11 +224,21 @@ public class RestApiController {
         		break;
         	}
         }
+        // 参加しているかチェック
         if (null == myGameUser.getUser()) {
-        	resultMessage = "ゲームに参加していません";
+        	resultMessage = "まだゲームに参加していません";
 			return resultMessage; 
         }
-        // TODO:自分のターンかどうかチェック
+        // 対戦相手がいるかチェック
+        if (turn == 0) {
+        	resultMessage = "まだ対戦相手が現れていません";
+			return resultMessage; 
+        }
+        // 自分のターンかチェック
+        if (turn != myTurn) {
+        	resultMessage = "あなたのターンではありません";
+			return resultMessage; 
+        }
         
         /*
         // (2) ゲームボードの取得 ======================
@@ -260,7 +303,9 @@ public class RestApiController {
 			// 確定石リストの初期化
 			ConfirmStone = new ArrayList<ArrayList<Integer>>();
 			// 更新成功メッセージ
-			resultMessage = "あなたの番です";
+			resultMessage = "相手のターンを待っています。";
+			// Turnを反転させる
+			turn *= -1;
 		}
 		return resultMessage;
 	}
