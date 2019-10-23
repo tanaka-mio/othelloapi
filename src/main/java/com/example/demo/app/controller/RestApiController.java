@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.app.resource.OthelloStone;
+import com.example.demo.app.resource.Turn;
 import com.example.demo.app.resource.GameBoard;
 import com.example.demo.app.resource.GameUser;
 
@@ -29,7 +30,7 @@ import com.example.demo.app.resource.GameUser;
 public class RestApiController {
 
 	// オセロの配列
-	public int [][] OthelloStone = {
+	public int [][] othelloStone = {
 			{0, 0, 0, 0, 0, 0, 0, 0},
 			{0, 0, 0, 0, 0, 0, 0, 0},
 			{0, 0, 0, 0, 0, 0, 0, 0},
@@ -39,10 +40,8 @@ public class RestApiController {
 			{0, 0, 0, 0, 0, 0, 0, 0},
 			{0, 0, 0, 0, 0, 0, 0, 0}
 	};
-	// 登録時に使用するターン
-	public int registTurn = -1;
 	// ゲームの判定を決めるTurn
-	public int turn = 0;
+	public Turn gameTurn = null;
 	// ゲームコード
 	public int gameCode = 0;
 	
@@ -52,9 +51,9 @@ public class RestApiController {
 	public ArrayList<GameBoard> gameBoardList = new ArrayList<GameBoard>();
 	
 	// 取れる可能性のある石の配列
-	public ArrayList<ArrayList<Integer>> PossibilityStone = new ArrayList<ArrayList<Integer>>();
+	public ArrayList<ArrayList<Integer>> possibilityStone = new ArrayList<ArrayList<Integer>>();
 	// 取れる石の配列
-	public ArrayList<ArrayList<Integer>> ConfirmStone = new ArrayList<ArrayList<Integer>>();
+	public ArrayList<ArrayList<Integer>> confirmStone = new ArrayList<ArrayList<Integer>>();
 	
 	/*
 	 * （新）オセロゲーム情報取得用API
@@ -68,11 +67,11 @@ public class RestApiController {
 		// ユーザー情報
 		GameUser myGameUser = new GameUser();
 		// ゲーム情報
-		GameBoard myGameBoard = new GameBoard();
+		// GameBoard myGameBoard = new GameBoard();
 		
 		// (1) ハッシュコードのチェック ======================
 		if (hashCode.equals("null")) {
-    		resultMap.put("OthelloStone", OthelloStone);
+    		resultMap.put("OthelloStone", othelloStone);
     		resultMap.put("status", "001");
     		return resultMap;
 		}
@@ -85,28 +84,28 @@ public class RestApiController {
         }
         // ゲームに参加していない場合
         if (null == myGameUser.getUser()) {
-    		resultMap.put("OthelloStone", OthelloStone);
+    		resultMap.put("OthelloStone", othelloStone);
     		resultMap.put("status", "002");
     		resultMap.put("message", "まだゲームに参加していません。");
     		return resultMap;
         }
         // 相手がいない場合
-        if (turn == 0) {
-    		resultMap.put("OthelloStone", OthelloStone);
+        if (gameTurn == null) {
+    		resultMap.put("OthelloStone", othelloStone);
     		resultMap.put("status", "003");
     		resultMap.put("message", "まだ対戦相手が現れていません");
     		return resultMap;
         }
         // 相手のターンの場合
-        if (turn != myGameUser.getUserTurn()) {
-        	resultMap.put("OthelloStone", OthelloStone);
+        if (gameTurn != myGameUser.getUserTurn()) {
+        	resultMap.put("OthelloStone", othelloStone);
     		resultMap.put("status", "004");
     		resultMap.put("message", "あなたのターンではありません");
     		return resultMap;
         }
         // 自分のターンの場合
-        if (turn == myGameUser.getUserTurn()) {
-        	resultMap.put("OthelloStone", OthelloStone);
+        if (gameTurn == myGameUser.getUserTurn()) {
+        	resultMap.put("OthelloStone", othelloStone);
     		resultMap.put("status", "004");
     		resultMap.put("message", "あなたのターンです");
     		return resultMap;
@@ -121,7 +120,7 @@ public class RestApiController {
         	}
         }
         */
-		resultMap.put("OthelloStone", OthelloStone);
+		resultMap.put("OthelloStone", othelloStone);
 		resultMap.put("status", "005");
 		return resultMap;
 	}
@@ -157,34 +156,34 @@ public class RestApiController {
 	        // (2) ユーザー情報、ゲーム情報の登録 ===================================
 	        // 自分が白の場合、ルームコードを取得してINSERT
 	        // 自分が黒の場合、ルームコード・ゲームコードを＋１してINSERT
-	        if (registTurn == -1) {
+	        if (gameUserList.size() % 2 == 0) {
+	        	gameTurn = Turn.Black;
 	        	gameCode = gameCode + 1;
-	        	
 	        	// 黒の時だけゲームボード作成する（初回なので）
-	        	registBoard.setOthelloStone(OthelloStone);
+	        	registBoard.setOthelloStone(othelloStone);
 	        	registBoard.setGameCode(gameCode);
 	        	registBoard.setConfirmStone(new ArrayList<ArrayList<Integer>>());
 	        	registBoard.setPossibilityStone(new ArrayList<ArrayList<Integer>>());
 	        	gameBoardList.add(registBoard);
 	        } else {
 	        	// 白の場合
-	        	turn = -1;
+	        	gameTurn = Turn.White;
 	        }
 	        // ユーザー情報の作成
         	registUser.setUser(resultCode);
-        	registUser.setUserTurn(registTurn);
+        	registUser.setUserTurn(gameTurn);
         	registUser.setGameCode(gameCode);	
         	gameUserList.add(registUser);
         	
     		// 結果の詰め込み
     		resultmap.put("hashCode", resultCode);
-    		resultmap.put("turn", (registTurn == -1)? "-1" : "1" );
+    		resultmap.put("turn", (gameTurn == Turn.Black)? "-1" : "1" );
 	        
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		}		
 		// (3) Turnを反転させる ===================================
-		registTurn *= -1;
+		gameTurn = (gameTurn == Turn.Black)? Turn.White : Turn.Black ;
 		
 		return resultmap;
 	}
@@ -214,13 +213,13 @@ public class RestApiController {
 		// 更新を実施するか判定する変数
 		boolean result = false;
 		// 自分のターン
-		int myTurn = 0;
+		Turn turn123 = null;
 		
 		// (1) ハッシュコードのチェック ======================
         for (GameUser tempuser : gameUserList) {
         	if (tempuser.getUser().equals(hashCode)) {
         		myGameUser = tempuser;
-        		myTurn = tempuser.getUserTurn();
+        		turn123 = tempuser.getUserTurn();
         		break;
         	}
         }
@@ -230,12 +229,12 @@ public class RestApiController {
 			return resultMessage; 
         }
         // 対戦相手がいるかチェック
-        if (turn == 0) {
+        if (gameUserList.size() == 1) {
         	resultMessage = "まだ対戦相手が現れていません";
 			return resultMessage; 
         }
         // 自分のターンかチェック
-        if (turn != myTurn) {
+        if (gameTurn != turn123) {
         	resultMessage = "あなたのターンではありません";
 			return resultMessage; 
         }
@@ -255,14 +254,14 @@ public class RestApiController {
         
 		// (3) ゲームスタート          ======================
 		// すでに石が置かれているかチェックする
-		if (OthelloStone[hitY][hitX] != 0) {
+		if (othelloStone[hitY][hitX] != 0) {
 			resultMessage = "その場所には置けません";
 			return resultMessage;
 		}
 		// 周りのマスに石が1つでもあるかチェックする
 		for (int i = hitY - 1; i < hitY + 2; i++) {
 			for (int k = hitX - 1; k < hitX + 2; k++) {
-				if ((i >= 0 && i < 8) && (k >= 0 && k < 8 ) && OthelloStone[i][k] != 0) {
+				if ((i >= 0 && i < 8) && (k >= 0 && k < 8 ) && othelloStone[i][k] != 0) {
 					result = true;
 					break;
 				}
@@ -273,7 +272,7 @@ public class RestApiController {
 		for (int i = hitY - 1; i < hitY + 2; i++) {
 			for (int k = hitX - 1; k < hitX + 2; k++) {
 				// 敵のマスだった場合、チェック関数を呼び出す
-				if ((i >= 0 && i < 8) && (k >= 0 && k < 8 ) && OthelloStone[i][k] == (myTurn * -1)) {
+				if ((i >= 0 && i < 8) && (k >= 0 && k < 8 )) {
 					// 方向を算出する（対象ー置こうとした場所）
 					int directionY = i - hitY;
 					int directionX = k - hitX;
@@ -281,83 +280,65 @@ public class RestApiController {
 					// 自分と同じ色がある場合、確定石リストにリスト追加
 					// 石が何も置かれていない場合、その方向のチェックは処理終了
 					// 敵の色がある→候補石リストに追加し、再帰関数を呼び続ける
-					checkCell(i, k, directionY, directionX, myTurn);
+					checkCell(i, k, directionY, directionX, turn123.getNo());
 				}
 			}
 		}
 		// 取ってきたリストが０件の場合更新しない
-		if (ConfirmStone.size() == 0) {
+		if (confirmStone.size() == 0) {
 			result = false;
 		}
 
 		// (4) 石の更新処理　          ======================
 		if (result) {
 			// クリックした場所を更新する
-			OthelloStone[hitY][hitX] = myTurn;
+			othelloStone[hitY][hitX] = turn123.getNo();
 			// 取れた範囲を更新する
-			for (int k = 0 ; k < ConfirmStone.size(); k++) {
-				int updateY = ConfirmStone.get(k).get(0);
-				int updateX = ConfirmStone.get(k).get(1);
-				OthelloStone[updateY][updateX] = myTurn;
+			for (int k = 0 ; k < confirmStone.size(); k++) {
+				int updateY = confirmStone.get(k).get(0);
+				int updateX = confirmStone.get(k).get(1);
+				othelloStone[updateY][updateX] = turn123.getNo();
 			}
 			// 確定石リストの初期化
-			ConfirmStone = new ArrayList<ArrayList<Integer>>();
+			confirmStone = new ArrayList<ArrayList<Integer>>();
 			// 更新成功メッセージ
 			resultMessage = "相手のターンを待っています。";
 			// Turnを反転させる
-			turn *= -1;
+			gameTurn = (gameTurn == Turn.Black)? Turn.White : Turn.Black ;
 		}
 		return resultMessage;
 	}
 	
 	public void checkCell (int centerI, int centerK, int directionY, int directionX, int myTurn) {
-		// 対象の石座標に方向の座標を足しこんでチェック対象を取得する
-		int targetY = centerI + directionY;
-		int targetX = centerK + directionX;
-		
-		// ここで、配列要素外にアクセスしようとしていたら処理終了する
-		if (!(targetY >= 0 && targetY < 8) && !(targetX >= 0 && targetX < 8 )){
-			// 候補石リストの初期化
-			PossibilityStone = new ArrayList<ArrayList<Integer>>();
-			return;
-		}
-		int target = OthelloStone[targetY][targetX];
-		
-		// 終了になる条件：自分と同じ色（リスト追加）
-		if (target == myTurn) {
-			// 確定石リストに追加する
+
+		// 敵の場合
+		if(othelloStone[centerI][centerK] == (myTurn * -1)) {
+			// 可能性のあるリストに追加
 			ArrayList<Integer> intList = new ArrayList<Integer>();
 			intList.add(centerI);
 			intList.add(centerK);
-			ConfirmStone.add(intList);
-			// 今までの候補リストを追加する
-			if (PossibilityStone.size() != 0) {
-				for (int m = 0; m < PossibilityStone.size(); m++) {
-					// 確定石リストに追加する
-					ConfirmStone.add(PossibilityStone.get(m));
-				}
+			possibilityStone.add(intList);
+			
+			// 次に進めるかチェックする
+			int targetY = centerI + directionY;
+			int targetX = centerK + directionX;
+			if (!(targetY >= 0 && targetY < 8) || !(targetX >= 0 && targetX < 8 )){
+				// 候補石リストの初期化
+				possibilityStone = new ArrayList<ArrayList<Integer>>();
+				return;
 			}
-			// 候補石リストの初期化
-			PossibilityStone = new ArrayList<ArrayList<Integer>>();
-			
-		// 再帰になる条件：ライバルと同じ色
-		} else if (target == (myTurn * -1)) {
-			// 方向の算出
-			int paramDirectionY = targetY - centerI;
-			int paramDirectionX = targetX - centerK;
-			// 候補石リストに追加する
-			ArrayList<Integer> intList = new ArrayList<Integer>();
-			intList.add(paramDirectionY);
-			intList.add(paramDirectionX);
-			PossibilityStone.add(intList);
 			// 再帰関数を呼ぶ
-			checkCell(targetY, targetX, paramDirectionY, paramDirectionX, myTurn);
+			checkCell(targetY, targetX, directionY, directionX, myTurn);
 			
-		// 処理を終了させる条件：先に何もない
-		} else if (target == 0) {
-			// 候補石リストの初期化
-			PossibilityStone = new ArrayList<ArrayList<Integer>>();
+		} else if (othelloStone[centerI][centerK] == myTurn) {
+			// 味方の場合
+			// 今までの候補リストを追加する
+			for (int m = 0; m < possibilityStone.size(); m++) {
+				// 確定石リストに追加する
+				confirmStone.add(possibilityStone.get(m));
+			}
 		}
+		possibilityStone = new ArrayList<ArrayList<Integer>>();
 	}
 	
 	/*
@@ -378,6 +359,6 @@ public class RestApiController {
 	@ResponseBody
 	@CrossOrigin
 	public int[][] getOthelloStone() {
-		return OthelloStone;
+		return othelloStone;
 	}
 }

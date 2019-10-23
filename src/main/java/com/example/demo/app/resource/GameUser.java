@@ -9,7 +9,7 @@ public class GameUser implements Serializable {
     /** ユーザーのハッシュコード */
     private String User;
     /** ユーザーのターン */
-    private int userTurn;
+    private Turn userTurn;
     /** ゲームコード */
     private int gameCode;
     
@@ -25,11 +25,11 @@ public class GameUser implements Serializable {
 		User = user;
 	}
 
-	public int getUserTurn() {
+	public Turn getUserTurn() {
 		return userTurn;
 	}
 
-	public void setUserTurn(int userTurn) {
+	public void setUserTurn(Turn userTurn) {
 		this.userTurn = userTurn;
 	}
 
