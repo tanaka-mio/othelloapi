@@ -10,40 +10,40 @@ public class GameBoard implements Serializable {
 	/** ゲームコード */
 	private int gameCode;
 	/** オセロの配列 */
-	private int [][] OthelloStone;
+	private int [][] othelloStone;
 	/** 取れる可能性のある石の配列 */
-	private ArrayList<ArrayList<Integer>> PossibilityStone = new ArrayList<ArrayList<Integer>>();
+	private ArrayList<ArrayList<Integer>> possibilityStone = new ArrayList<ArrayList<Integer>>();
 	/** 取れる可能性のある石の配列 */
-	private ArrayList<ArrayList<Integer>> ConfirmStone = new ArrayList<ArrayList<Integer>>();
+	private ArrayList<ArrayList<Integer>> confirmStone = new ArrayList<ArrayList<Integer>>();
 
 	// コンストラクタ
 	public GameBoard (int argGameCode, int[][] argOthelloStone) {
 		this.gameCode = argGameCode;
-		this.OthelloStone = argOthelloStone;
+		this.othelloStone = argOthelloStone;
 	}
 
 	public int[][] getOthelloStone() {
-		return OthelloStone;
+		return othelloStone;
 	}
 
 	public void setOthelloStone(int[][] othelloStone) {
-		OthelloStone = othelloStone;
+		this.othelloStone = othelloStone;
 	}
 
 	public ArrayList<ArrayList<Integer>> getPossibilityStone() {
-		return PossibilityStone;
+		return possibilityStone;
 	}
 
 	public void setPossibilityStone(ArrayList<ArrayList<Integer>> possibilityStone) {
-		PossibilityStone = possibilityStone;
+		this.possibilityStone = possibilityStone;
 	}
 
 	public ArrayList<ArrayList<Integer>> getConfirmStone() {
-		return ConfirmStone;
+		return confirmStone;
 	}
 
 	public void setConfirmStone(ArrayList<ArrayList<Integer>> confirmStone) {
-		ConfirmStone = confirmStone;
+		this.confirmStone = confirmStone;
 	}
 
 	public int getGameCode() {
