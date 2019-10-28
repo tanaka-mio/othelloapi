@@ -4,25 +4,21 @@ import java.io.Serializable;
 
 public class GameUser implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
+	/** ユーザーのハッシュコード */
+	private String user;
+	/** ユーザーのターン */
+	private Turn userTurn;
+	/** ゲームコード */
+	private int gameCode;
 
-    /** ユーザーのハッシュコード */
-    private String User;
-    /** ユーザーのターン */
-    private Turn userTurn;
-    /** ゲームコード */
-    private int gameCode;
-    
-    // デフォルトコンストラクタ
-    public GameUser () {
-    }
-    
-	public String getUser() {
-		return User;
+	// コンストラクタ
+	public GameUser (String user) {
+		this.user = user;
 	}
 
-	public void setUser(String user) {
-		User = user;
+	public String getUser() {
+		return user;
 	}
 
 	public Turn getUserTurn() {
