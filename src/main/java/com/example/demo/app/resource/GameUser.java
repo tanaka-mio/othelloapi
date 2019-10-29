@@ -7,8 +7,8 @@ public class GameUser implements Serializable {
 	private static final long serialVersionUID = 1L;
 	/** ユーザーのハッシュコード */
 	private String user;
-	/** ユーザーのターン */
-	private Turn userTurn;
+	/** ユーザーの石情報 */
+	private Stone userStone;
 	/** ゲームコード */
 	private int gameCode;
 
@@ -21,12 +21,12 @@ public class GameUser implements Serializable {
 		return user;
 	}
 
-	public Turn getUserTurn() {
-		return userTurn;
+	public Stone getUserStone() {
+		return userStone;
 	}
 
-	public void setUserTurn(Turn userTurn) {
-		this.userTurn = userTurn;
+	public void setUserStone(Stone userStone) {
+		this.userStone = userStone;
 	}
 
 	public int getGameCode() {

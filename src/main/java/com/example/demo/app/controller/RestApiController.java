@@ -8,6 +8,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.xml.bind.DatatypeConverter;
@@ -23,7 +24,7 @@ import com.example.demo.app.resource.GameBoard;
 import com.example.demo.app.resource.GameUser;
 import com.example.demo.app.resource.OthelloStone;
 import com.example.demo.app.resource.OthelloStore;
-import com.example.demo.app.resource.Turn;
+import com.example.demo.app.resource.Stone;
 
 @RestController
 @RequestMapping("api/sample")
@@ -80,14 +81,14 @@ public class RestApiController {
 			return resultMap;
 		}
 		// 相手のターンの場合
-		if (OthelloStore.gameTurn != myGameUser.getUserTurn()) {
+		if (OthelloStore.gameTurn != myGameUser.getUserStone()) {
 			resultMap.put("OthelloStone", OthelloStore.othelloStone);
 			resultMap.put("status", "004");
 			resultMap.put("message", STARTGAME_NOT_YOUR_TURN);
 			return resultMap;
 		}
 		// 自分のターンの場合
-		if (OthelloStore.gameTurn == myGameUser.getUserTurn()) {
+		if (OthelloStore.gameTurn == myGameUser.getUserStone()) {
 			resultMap.put("OthelloStone", OthelloStore.othelloStone);
 			resultMap.put("status", "004");
 			resultMap.put("message", STARTGAME_YOUR_TURN);
@@ -129,28 +130,28 @@ public class RestApiController {
 
 		// (2) ユーザー情報、ゲーム情報の登録 ===================================
 		if (OthelloStore.gameUserList.size() % 2 == 0) {
-			OthelloStore.gameTurn = Turn.Black;
+			OthelloStore.gameTurn = Stone.Black;
 			OthelloStore.gameCode = OthelloStore.gameCode + 1;
 			// 黒の時だけゲームボード作成する（初回なので）
 			GameBoard registBoard = new GameBoard(OthelloStore.gameCode, OthelloStore.othelloStone);
 			OthelloStore.gameBoardList.add(registBoard);
 		} else {
 			// 白の場合
-			OthelloStore.gameTurn = Turn.White;
+			OthelloStore.gameTurn = Stone.White;
 		}
 		// ユーザー情報の作成
 		GameUser registUser = new GameUser(userId);
-		registUser.setUserTurn(OthelloStore.gameTurn);
+		registUser.setUserStone(OthelloStore.gameTurn);
 		registUser.setGameCode(OthelloStore.gameCode);
 		OthelloStore.gameUserList.add(registUser);
 
 		// 結果の詰め込み
 		Map<String, String> resultmap = new HashMap<>();
 		resultmap.put("hashCode", userId);
-		resultmap.put("turn", (OthelloStore.gameTurn == Turn.Black) ? "-1" : "1");
+		resultmap.put("turn", (OthelloStore.gameTurn == Stone.Black) ? "-1" : "1");
 
 		// (3) Turnを反転させる ===================================
-		OthelloStore.gameTurn = (OthelloStore.gameTurn == Turn.Black) ? Turn.White : Turn.Black;
+		OthelloStore.gameTurn = (OthelloStore.gameTurn == Stone.Black) ? Stone.White : Stone.Black;
 		return resultmap;
 	}
 
@@ -164,16 +165,16 @@ public class RestApiController {
 		// ユーザー情報
 		GameUser myGameUser = null;
 		// 自分のターン
-		Turn myGameTurn = null;
+		Stone myGameUserTurn = null;
 		for (GameUser tempuser : OthelloStore.gameUserList) {
 			if (tempuser.getUser().equals(hashCode)) {
 				myGameUser = tempuser;
-				myGameTurn = tempuser.getUserTurn();
+				myGameUserTurn = tempuser.getUserStone();
 				break;
 			}
 		}
 		// 参加しているかチェック
-		if (myGameUser.getUser() == null) {
+		if (myGameUser == null || myGameUser.getUser() == null) {
 			return NOTSTARTGAME_USER_JOIN;
 		}
 		// 対戦相手がいるかチェック
@@ -181,7 +182,7 @@ public class RestApiController {
 			return NOTSTARTGAME_USER_WAIT;
 		}
 		// 自分のターンかチェック
-		if (OthelloStore.gameTurn != myGameTurn) {
+		if (OthelloStore.gameTurn != myGameUserTurn) {
 			return STARTGAME_NOT_YOUR_TURN;
 		}
 
@@ -189,25 +190,15 @@ public class RestApiController {
 		// (3) ゲームスタート
 		// Resultメッセージ
 		String resultMessage = "";
-		// 更新を実施するか判定する変数
-		boolean result = false;
 
 		// すでに石が置かれているかチェックする
 		if (OthelloStore.othelloStone[hitY][hitX] != 0) {
 			resultMessage = STARTGAME_NOT_PUT;
 			return resultMessage;
 		}
-		// 周りのマスに石が1つでもあるかチェックする
-		for (int i = hitY - 1; i < hitY + 2; i++) {
-			for (int k = hitX - 1; k < hitX + 2; k++) {
-				if ((i >= 0 && i < 8) && (k >= 0 && k < 8) && OthelloStore.othelloStone[i][k] != 0) {
-					result = true;
-					break;
-				}
-			}
-		}
-
 		// 取れる石があるかチェックする
+		// possibilityStoneの初期化
+		List<ArrayList<Integer>> possibilityStone = new ArrayList<>();
 		for (int i = hitY - 1; i < hitY + 2; i++) {
 			for (int k = hitX - 1; k < hitX + 2; k++) {
 				// 敵のマスだった場合、チェック関数を呼び出す
@@ -219,65 +210,61 @@ public class RestApiController {
 					// 自分と同じ色がある場合、確定石リストにリスト追加
 					// 石が何も置かれていない場合、その方向のチェックは処理終了
 					// 敵の色がある→候補石リストに追加し、再帰関数を呼び続ける
-					checkCell(i, k, directionY, directionX, myGameTurn.getNo());
+					checkCell(i, k, directionY, directionX, myGameUserTurn.getNo(), possibilityStone);
 				}
+				// possibilityStoneの初期化
+				possibilityStone = new ArrayList<>();
 			}
 		}
-		// 取ってきたリストが０件の場合更新しない
-		if (OthelloStore.confirmStone.size() == 0) {
-			result = false;
-		}
-
-		// (4) 石の更新処理 ======================
-		if (result) {
+		// 取ってきたリストが1件以上の場合更新する
+		if (OthelloStore.confirmStone.size() != 0) {
 			// クリックした場所を更新する
-			OthelloStore.othelloStone[hitY][hitX] = myGameTurn.getNo();
+			OthelloStore.othelloStone[hitY][hitX] = myGameUserTurn.getNo();
 			// 取れた範囲を更新する
 			for (int k = 0; k < OthelloStore.confirmStone.size(); k++) {
 				int updateY = OthelloStore.confirmStone.get(k).get(0);
 				int updateX = OthelloStore.confirmStone.get(k).get(1);
-				OthelloStore.othelloStone[updateY][updateX] = myGameTurn.getNo();
+				OthelloStore.othelloStone[updateY][updateX] = myGameUserTurn.getNo();
 			}
 			// 確定石リストの初期化
 			OthelloStore.confirmStone = new ArrayList<ArrayList<Integer>>();
 			// 更新成功メッセージ
 			resultMessage = STARTGAME_NEXT_TURN;
 			// Turnを反転させる
-			OthelloStore.gameTurn = (OthelloStore.gameTurn == Turn.Black) ? Turn.White : Turn.Black;
+			OthelloStore.gameTurn = (OthelloStore.gameTurn == Stone.Black) ? Stone.White : Stone.Black;
 		}
 		return resultMessage;
 	}
 
-	public void checkCell(int centerI, int centerK, int directionY, int directionX, int myTurn) {
+	private void checkCell(int centerI, int centerK, int directionY, int directionX, int myTurn,
+			List<ArrayList<Integer>> possibilityStone) {
 
 		// 敵の場合
 		if (OthelloStore.othelloStone[centerI][centerK] == (myTurn * -1)) {
 			// 可能性のあるリストに追加
-			ArrayList<Integer> intList = new ArrayList<Integer>();
+			ArrayList<Integer> intList = new ArrayList<>();
 			intList.add(centerI);
 			intList.add(centerK);
-			OthelloStore.possibilityStone.add(intList);
+			possibilityStone.add(intList);
 
 			// 次に進めるかチェックする
 			int targetY = centerI + directionY;
 			int targetX = centerK + directionX;
 			if (!(targetY >= 0 && targetY < 8) || !(targetX >= 0 && targetX < 8)) {
 				// 候補石リストの初期化
-				OthelloStore.possibilityStone = new ArrayList<ArrayList<Integer>>();
 				return;
 			}
 			// 再帰関数を呼ぶ
-			checkCell(targetY, targetX, directionY, directionX, myTurn);
+			checkCell(targetY, targetX, directionY, directionX, myTurn, possibilityStone);
 
 		} else if (OthelloStore.othelloStone[centerI][centerK] == myTurn) {
 			// 味方の場合
 			// 今までの候補リストを追加する
-			for (int m = 0; m < OthelloStore.possibilityStone.size(); m++) {
+			for (int m = 0; m < possibilityStone.size(); m++) {
 				// 確定石リストに追加する
-				OthelloStore.confirmStone.add(OthelloStore.possibilityStone.get(m));
+				OthelloStore.confirmStone.add(possibilityStone.get(m));
 			}
 		}
-		OthelloStore.possibilityStone = new ArrayList<ArrayList<Integer>>();
 	}
 
 	/*
